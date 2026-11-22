@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7-a-side Football Auction</title>
+<style>
+:root{color-scheme:dark;--bg:#071b14;--panel:#102a20;--green:#19a463;--muted:#b7d6c5;--white:#f5fff8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--white);font-family:Arial,Helvetica,sans-serif}
+header{text-align:center;padding:18px 12px 10px}
+header h1{margin:0;font-size:clamp(22px,4vw,38px);letter-spacing:1px}
+header p{margin:7px 0;color:var(--muted);font-size:13px;letter-spacing:2px}
+main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:minmax(260px,350px) 1fr;gap:16px}
+.panel,.stage{background:var(--panel);border:1px solid #28533e;border-radius:18px;padding:18px}
+.panel h2{margin:0 0 15px;font-size:18px}
+label{display:block;color:var(--muted);font-size:13px;margin:12px 0 6px}
+input,select{width:100%;padding:12px;border:1px solid #47745b;border-radius:9px;background:#071b14;color:white;font-size:16px}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button{border:0;border-radius:9px;padding:12px 14px;background:var(--green);color:white;font-weight:700;font-size:14px;cursor:pointer}
+button.secondary{background:#315b45}button.danger{background:#8e3838}
+button:focus,input:focus,select:focus{outline:2px solid #9ce8bb;outline-offset:2px}
+.stage{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:480px;background:radial-gradient(ellipse at center,#1a4932 0%,#0c291d 60%,#071b14 100%);position:relative;overflow:hidden}
+.stage:before,.stage:after{content:"";position:absolute;border:1px solid #ffffff18;border-radius:50%;width:280px;height:280px;pointer-events:none}
+.stage:after{width:520px;height:520px}
+.kicker{color:#a8e4bd;letter-spacing:4px;font-size:clamp(11px,1.5vw,16px);z-index:1}
+.player{font-size:clamp(34px,7vw,76px);font-weight:900;line-height:1.05;margin:24px 0 18px;overflow-wrap:anywhere;z-index:1;text-transform:uppercase}
+.position{background:#167b4a;border-radius:999px;padding:9px 22px;font-size:clamp(15px,2vw,23px);font-weight:800;letter-spacing:2px;z-index:1}
+.price-label{color:#b7d6c5;margin-top:28px;letter-spacing:3px;font-size:13px;z-index:1}
+.price{font-size:clamp(42px,8vw,90px);font-weight:900;margin:4px 0 22px;z-index:1}
+.status{background:#176b3c;border-radius:12px;padding:14px 30px;font-size:clamp(20px,3vw,34px);font-weight:900;min-width:210px;z-index:1}
+.status.unsold{background:#8e3838}.status.bidding{background:#315b45}
+.foot{color:#b7d6c5;font-size:12px;letter-spacing:2px;margin-top:26px;z-index:1}
+.counter{color:var(--muted);font-size:13px;margin-top:10px}
+body.projector header,body.projector .panel,body.projector .counter{display:none}
+body.projector main{display:block;max-width:none;padding:0}
+body.projector .stage{height:100vh;min-height:100vh;border:0;border-radius:0}
+body.projector .player{font-size:clamp(55px,11vw,150px)}
+body.projector .price{font-size:clamp(70px,13vw,170px)}
+body.projector .position{font-size:clamp(22px,3vw,42px);padding:14px 34px}
+body.projector .status{font-size:clamp(30px,5vw,64px);padding:18px 48px}
+@media(max-width:760px){main{grid-template-columns:1fr}.stage{min-height:380px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚽ 7-A-SIDE PLAYER AUCTION</h1>
+  <p>SCHOOL FRIENDS TOURNAMENT</p>
+</header>
+<main>
+  <section class="panel">
+    <h2>Auction controller</h2>
+    <label for="playerName">Player name</label>
+    <input id="playerName" placeholder="Enter player name" autocomplete="off">
+    <label for="position">Position</label>
+    <select id="position">
+      <option>GK</option><option>DEF</option><option selected>MID</option><option>FWD</option>
+    </select>
+    <label for="price">Price</label>
+    <input id="price" type="number" min="0" step="1" value="50">
+    <label for="status">Auction status</label>
+    <select id="status">
+      <option value="UP FOR AUCTION">UP FOR AUCTION</option>
+      <option value="SOLD">SOLD</option>
+      <option value="UNSOLD">UNSOLD</option>
+    </select>
+    <div class="buttons">
+      <button id="update">Update display</button>
+      <button class="secondary" id="next">Next player</button>
+      <button class="secondary" id="project">Projector mode</button>
+    </div>
+    <p class="counter" id="count">Player 1</p>
+    <p class="counter">Tip: In projector mode, press Escape to return to the controls.</p>
+  </section>
+  <section class="stage" aria-live="polite">
+    <div class="kicker">NOW ON THE AUCTION BLOCK</div>
+    <div class="player" id="showName">PLAYER NAME</div>
+    <div class="position" id="showPosition">MID</div>
+    <div class="price-label">CURRENT PRICE</div>
+    <div class="price" id="showPrice">50</div>
+    <div class="status bidding" id="showStatus">UP FOR AUCTION</div>
+    <div class="foot">7-A-SIDE FOOTBALL TOURNAMENT</div>
+  </section>
+</main>
+<script>
+let playerNo=1;
+const $=id=>document.getElementById(id);
+function updateDisplay(){
+  const name=$('playerName').value.trim()||'PLAYER NAME';
+  const price=$('price').value;
+  $('showName').textContent=name;
+  $('showPosition').textContent=$('position').value;
+  $('showPrice').textContent=(price===''?'0':price);
+  const status=$('status').value;
+  $('showStatus').textContent=status;
+  $('showStatus').className='status '+(status==='SOLD'?'':status==='UNSOLD'?'unsold':'bidding');
+}
+$('update').addEventListener('click',updateDisplay);
+$('next').addEventListener('click',()=>{
+  playerNo++;$('count').textContent='Player '+playerNo;
+  $('playerName').value='';$('position').value='MID';$('price').value='50';$('status').value='UP FOR AUCTION';
+  updateDisplay();$('playerName').focus();
+});
+$('project').addEventListener('click',()=>{
+  document.body.classList.add('projector');
+  if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') document.body.classList.remove('projector');
+});
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement) document.body.classList.remove('projector');
+});
+['playerName','position','price','status'].forEach(id=>{
+  $(id).addEventListener('input',updateDisplay);
+  $(id).addEventListener('change',updateDisplay);
+});
+updateDisplay();
+</script>
+</body>
+</html>
